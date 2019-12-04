@@ -42,3 +42,35 @@ struct symbol_set* create_symbol(char *s)
     ss->element=s;
     return ss;
 }
+
+struct Tape{
+    struct Tape *right;
+    int index;
+    char symbol;
+    int ishead;
+};
+
+struct Tape* create_tape(char symbol)
+{
+    struct Tape *t=(struct Tape *)malloc(sizeof(struct Tape));
+    t->symbol=symbol;
+    return t;
+}
+
+void add_right(struct Tape *dest,struct Tape *src)
+{
+    while(dest->right)
+    {
+        dest=dest->right;
+    }
+    dest->right=src;
+    dest->right->index=dest->index+1;
+    dest->right->right=NULL;
+}
+
+void add_left(struct Tape *dest,struct Tape *src)
+{
+    src->right=dest->right;
+    dest->right=src;
+    dest->right->index=dest->right->right->index-1;
+}

@@ -4,11 +4,18 @@
 struct Turing_machine* turing_machine;
 void parse(char *buf);
 void process(char *buf);
+struct transform_function *search_transform_function(char *current_state,char *current_symbol);
+FILE *console_fp;
+
 
 int main(int argc,char **args)
 {
 	if(argc==2)
 	{
+		char *cons=(char *)malloc(sizeof(char)*100);
+		strcat(cons,args[1]);
+		strcat(cons,"/console.txt");
+		console_fp=fopen(cons,"w+");
 		char *s=(char *)malloc(sizeof(char)*100);
 		strcat(s,args[1]);
 		strcat(s,"/test.tm");
@@ -49,7 +56,99 @@ void process(char *buf)
     char *space_symbol=turing_machine->space_symbol;                               		//空格符号
     struct symbol_set *terminate_symbol_set=turing_machine->terminate_symbol_set;       //终结状态集
     struct transform_function* transform_function=turing_machine->transform_function;   //转移函数
-	
+
+
+	struct Tape *tape[tape_number];
+	for(int i=0;i<tape_number;i++)
+	{
+		tape[i]=(struct Tape *)malloc(sizeof(struct Tape));
+		tape[i]->right=(struct Tape *)malloc(sizeof(struct Tape));
+		tape[i]->right->index=0;
+		tape[i]->right->ishead=1;
+		tape[i]->right->symbol=space_symbol[0];
+	}
+
+	int step=0;
+	char* state=init_state;
+
+	int len=strlen(buf);
+	for(int i=0;i<len;i++)
+	{
+		if(i==0)
+		{
+			tape[0]->right->index=0;
+
+			tape[0]->right->symbol=buf[i];
+		}
+		else
+		{
+			add_right(tape[0],create_tape(buf[i]));
+		}
+		
+	}
+	while(1)
+	{
+		char *current_symbol=(char *)malloc(sizeof(char)*1000);
+		fprintf(console_fp,"Step\t:\t%d\n",step++);
+
+		for(int i=0;i<tape_number;i++)
+		{
+			struct Tape *t=tape[i];
+			fprintf(console_fp,"Index%d\t:\t",i);
+			while(t->right)
+			{
+				fprintf(console_fp,"%d",t->right->index);
+				if(!t->right->right)
+				{
+					fprintf(console_fp,"\n");
+					break;
+				}
+				fprintf(console_fp,"\t");
+				t=t->right;
+			}
+			fprintf(console_fp,"Tape%d\t:\t",i);
+			t=tape[i];
+			while(t->right)
+			{
+				fprintf(console_fp,"%c",t->right->symbol);
+				if(!t->right->right)
+				{
+					fprintf(console_fp,"\n");
+					break;
+				}
+				fprintf(console_fp,"\t");
+				t=t->right;
+			}
+			fprintf(console_fp,"Head%d\t:\t",i);
+			t=tape[i];
+			while(t->right)
+			{
+				if(t->right->ishead==1)
+				{
+					fprintf(console_fp,"^");
+					current_symbol[i]=t->right->symbol;
+				}
+				if(!t->right->right)
+				{
+					fprintf(console_fp,"\n");
+					break;
+				}
+				fprintf(console_fp,"\t");
+				t=t->right;
+			}
+		}
+		fprintf(console_fp,"State\t:\t%s\n",state);
+		printf("%s\n%s\n",state,current_symbol);
+		struct transform_function *tf=search_transform_function(state,current_symbol);
+		if(!tf)
+		{
+			printf("aaaa\n");
+			break;
+		}
+		printf("%s\n%s\n%s\n",tf->next_state,tf->next_symbol,tf->move_direction);
+		break;
+	}
+
 }
 
 void parse(char *buf)
@@ -247,4 +346,19 @@ void parse(char *buf)
 		turing_machine->transform_function=t;
 	}
 	
+}
+
+struct transform_function *search_transform_function(char *current_state,char *current_symbol)
+{
+	struct transform_function *t=turing_machine->transform_function;
+	while (t)
+	{
+		if(!strcmp(current_state,t->current_state)&&!strcmp(current_symbol,t->current_symbol))//未考虑通配符
+		{
+			break;
+		}
+		t=t->next;
+	}
+	return t;
+	//if t is null, the turing-machine must be terminated!
 }

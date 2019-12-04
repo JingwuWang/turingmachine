@@ -1,0 +1,8 @@
+Step	:	0
+Index0	:	0	1	2	3	4	5	6
+Tape0	:	1	0	0	1	0	0	1
+Head0	:	^						
+Index1	:	0
+Tape1	:	_
+Head1	:	^
+State	:	0
