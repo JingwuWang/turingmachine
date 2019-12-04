@@ -27,7 +27,7 @@ struct Turing_machine{
 
 struct transform_function* create_transform_function(char *current_state,char *current_symbol,char *next_symbol,char *move_direction,char *next_state)
 {
-    struct transform_function* tf=(struct symbol_set*)malloc(sizeof(struct symbol_set));
+    struct transform_function* tf=(struct transform_function*)malloc(sizeof(struct transform_function));
     tf->current_state=current_state;
     tf->current_symbol=current_symbol;
     tf->next_state=next_state;

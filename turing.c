@@ -3,14 +3,15 @@
 #include "turing.h"
 struct Turing_machine* turing_machine;
 void parse(char *buf);
-
+void process(char *buf);
 
 int main(int argc,char **args)
 {
 	if(argc==2)
 	{
-		char *s="/test.tm";
-		s=strcat(args[1],s);
+		char *s=(char *)malloc(sizeof(char)*100);
+		strcat(s,args[1]);
+		strcat(s,"/test.tm");
 		FILE *fp=fopen(s,"r+");
 		char buf[5000];
 
@@ -19,15 +20,36 @@ int main(int argc,char **args)
     	{
         	fgets(buf,4900,fp);
 			//parse
-
 			parse(buf);
     	}
 		
+		char *input=(char *)malloc(sizeof(char)*100);
+		strcat(input,args[1]);
+		strcat(input,"/input.txt");
+		FILE *inputfp=fopen(input,"r+");
+		while(!feof(inputfp))
+		{
+			fgets(buf,4900,inputfp);
+			process(buf);
+		}
 	}
 	else
 	{
 		return 0;
 	}
+}
+
+void process(char *buf)
+{
+	int tape_number=turing_machine->tape_number;	  									//纸带数
+	struct symbol_set *state_set=turing_machine->state_set;                     		//状态集
+    struct symbol_set *input_symbol_set=turing_machine->input_symbol_set;           	//输入符号集
+    struct symbol_set *tape_symbol_set=turing_machine->tape_symbol_set;          	    //纸带符号集
+    char *init_state=turing_machine->init_state;                                 		//初始状态
+    char *space_symbol=turing_machine->space_symbol;                               		//空格符号
+    struct symbol_set *terminate_symbol_set=turing_machine->terminate_symbol_set;       //终结状态集
+    struct transform_function* transform_function=turing_machine->transform_function;   //转移函数
+	
 }
 
 void parse(char *buf)
@@ -173,9 +195,56 @@ void parse(char *buf)
 			turing_machine->tape_number=atoi(init_s);
 		}
 	}
-	else if(buf[0]!=';')
+	else if(buf[0]!=';'&&buf[0]!='\n')
 	{
+		int l=0,r,len;
+		for(r=l;buf[r]!=' ';r++);
+		len=r-l+1;
+		char *current_state=(char *)malloc(sizeof(char)*len+5);
+		for(int i=0;i<len-1;i++)
+		{
+			current_state[i]=buf[l+i];
+		}
 		
+		l=r+1;
+		for(r=l;buf[r]!=' ';r++);
+		len=r-l+1;
+		char *current_symbol=(char *)malloc(sizeof(char)*len+5);
+		for(int i=0;i<len-1;i++)
+		{
+			current_symbol[i]=buf[l+i];
+		}
+
+		l=r+1;
+		for(r=l;buf[r]!=' ';r++);
+		len=r-l+1;
+		char *next_symbol=(char *)malloc(sizeof(char)*len+5);
+		for(int i=0;i<len-1;i++)
+		{
+			next_symbol[i]=buf[l+i];
+		}
+
+		l=r+1;
+		for(r=l;buf[r]!=' ';r++);
+		len=r-l+1;
+		char *move_direction=(char *)malloc(sizeof(char)*len+5);
+		for(int i=0;i<len-1;i++)
+		{
+			move_direction[i]=buf[l+i];
+		}
+
+		l=r+1;
+		for(r=l;buf[r]&&buf[r]!=';'&&buf[r]!='\n'&&buf[r]!=' '&&buf[r]!='\t'&&buf[r]!='\0';r++);
+		len=r-l+1;
+		char *next_state=(char *)malloc(sizeof(char)*len+5);
+		for(int i=0;i<len-1;i++)
+		{
+			next_state[i]=buf[l+i];
+		}
+
+		struct transform_function* t=create_transform_function(current_state,current_symbol,next_symbol,move_direction,next_state);
+		t->next=turing_machine->transform_function;
+		turing_machine->transform_function=t;
 	}
 	
 }
