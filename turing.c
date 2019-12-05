@@ -4,6 +4,7 @@
 struct Turing_machine* turing_machine;
 void parse(char *buf);
 void process(char *buf);
+void tape_clean(struct Tape *);
 struct transform_function *search_transform_function(char *current_state,char *current_symbol);
 FILE *console_fp;
 
@@ -37,6 +38,8 @@ int main(int argc,char **args)
 		while(!feof(inputfp))
 		{
 			fgets(buf,4900,inputfp);
+			fprintf(console_fp,"Input: %s\n",buf);
+			fprintf(console_fp,"==================== RUN ====================\n");
 			process(buf);
 		}
 	}
@@ -80,7 +83,7 @@ void process(char *buf)
 
 			tape[0]->right->symbol=buf[i];
 		}
-		else
+		else if(buf[i]!='\n')
 		{
 			add_right(tape[0],create_tape(buf[i]));
 		}
@@ -90,7 +93,6 @@ void process(char *buf)
 	{
 		char *current_symbol=(char *)malloc(sizeof(char)*1000);
 		fprintf(console_fp,"Step\t:\t%d\n",step++);
-
 		for(int i=0;i<tape_number;i++)
 		{
 			struct Tape *t=tape[i];
@@ -137,16 +139,96 @@ void process(char *buf)
 				t=t->right;
 			}
 		}
-		fprintf(console_fp,"State\t:\t%s\n",state);
-		printf("%s\n%s\n",state,current_symbol);
+		fprintf(console_fp,"State\t:\t%s\n------------------------------------------------------\n",state);
+		
+		struct symbol_set *t=terminate_symbol_set;
+		int is_break=0;
+		while(t)
+		{
+			if(!strcmp(t->element,state))
+			{
+				is_break=1;
+				break;
+			}
+			t=t->next;
+		}
+		if(is_break)
+		{
+			fprintf(console_fp,"Result: True\n==================== END ====================\n");
+			break;
+		}
+
 		struct transform_function *tf=search_transform_function(state,current_symbol);
 		if(!tf)
 		{
-			printf("aaaa\n");
+			fprintf(console_fp,"Result: False\n==================== END ====================\n");
 			break;
 		}
-		printf("%s\n%s\n%s\n",tf->next_state,tf->next_symbol,tf->move_direction);
-		break;
+
+		//update
+		state=tf->next_state;
+		for(int i=0;i<tape_number;i++)
+		{
+			if(tf->next_symbol[i]!='*')
+			{
+				struct Tape *t=tape[i];
+				while(t->right)
+			{
+				if(t->right->ishead==1)
+				{
+					t->right->symbol=tf->next_symbol[i];
+				}
+				t=t->right;
+			}
+			}
+		}
+		for(int i=0;i<tape_number;i++)
+		{
+			struct Tape *t=tape[i];
+			if(tf->move_direction[i]=='l')
+			{
+				while(t->right)
+				{
+					if(t->right->ishead==1)
+					{
+						if(t!=tape[i])
+						{
+						t->ishead=1;
+						t->right->ishead=0;
+						}
+						else
+						{
+							add_left(tape[i],create_tape(space_symbol[0]));
+							t->right->ishead=1;
+							t->right->right->ishead=0;
+						}
+						
+						break;
+					}
+					t=t->right;
+				}
+			}
+			else if(tf->move_direction[i]=='r')
+			{
+				while(t->right)
+				{
+					if(t->right->ishead==1)
+					{
+						if(!t->right->right)
+						{
+							add_right(tape[i],create_tape(space_symbol[0]));
+						}
+						t->right->right->ishead=1;
+						t->right->ishead=0;
+						break;
+					}
+					t=t->right;
+				}
+			}
+			tape_clean(tape[i]);
+		}
+
+
 	}
 
 }
@@ -348,17 +430,72 @@ void parse(char *buf)
 	
 }
 
+int mystrcmp(char *str1,char *str2)
+{
+	for(int i=0;i<turing_machine->tape_number;i++)
+	{
+		if(str1[i]!=str2[i]&&str1[i]!='*'&&str2[i]!='*')
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int mycount(char *str1,char *str2)
+{
+	int i=0;
+	for(int i=0;i<turing_machine->tape_number;i++)
+	{
+		if(str1[i]!='*'&&str2[i]!='*')
+		{
+			++i;
+		}
+	}
+	return i;
+}
+
 struct transform_function *search_transform_function(char *current_state,char *current_symbol)
 {
 	struct transform_function *t=turing_machine->transform_function;
+	struct transform_function *p=NULL;
+	int matchstar=100000;
 	while (t)
 	{
-		if(!strcmp(current_state,t->current_state)&&!strcmp(current_symbol,t->current_symbol))//未考虑通配符
+		if(!strcmp(current_state,t->current_state)&&!mystrcmp(current_symbol,t->current_symbol))//未考虑通配符
 		{
-			break;
+			if(mycount(current_symbol,t->current_symbol)<=matchstar)
+			{
+				p=t;
+				matchstar=mycount(current_symbol,t->current_symbol);
+			}
 		}
 		t=t->next;
 	}
-	return t;
+	return p;
 	//if t is null, the turing-machine must be terminated!
+}
+
+void tape_clean(struct Tape *tape)
+{
+	struct Tape *t=tape;
+	while(t->right)
+	{
+		if(t->right->symbol!=turing_machine->space_symbol[0]||t->right->ishead==1)
+		{
+			tape->right=t->right;
+			break;
+		}
+		t=t->right;
+	}
+	struct Tape *last;
+	while(t)
+	{
+		if(t->symbol!=turing_machine->space_symbol[0]||t->ishead==1)
+		{
+			last=t;
+		}
+		t=t->right;
+	}
+	last->right=NULL;
 }
