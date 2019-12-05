@@ -7,15 +7,19 @@ void process(char *buf);
 void tape_clean(struct Tape *);
 struct transform_function *search_transform_function(char *current_state,char *current_symbol);
 FILE *console_fp;
-
+FILE *result_fp;
 
 int main(int argc,char **args)
 {
 	if(argc==2)
 	{
 		char *cons=(char *)malloc(sizeof(char)*100);
+		char *res=(char *)malloc(sizeof(char)*100);
 		strcat(cons,args[1]);
 		strcat(cons,"/console.txt");
+		strcat(res,args[1]);
+		strcat(res,"/result.txt");
+		result_fp=fopen(res,"w+");
 		console_fp=fopen(cons,"w+");
 		char *s=(char *)malloc(sizeof(char)*100);
 		strcat(s,args[1]);
@@ -38,9 +42,43 @@ int main(int argc,char **args)
 		while(!feof(inputfp))
 		{
 			fgets(buf,4900,inputfp);
+			for(int i=0;i<strlen(buf);i++)
+			{
+				if(buf[i]=='\n')
+				{
+					buf[i]='\0';
+				}
+			}
 			fprintf(console_fp,"Input: %s\n",buf);
-			fprintf(console_fp,"==================== RUN ====================\n");
-			process(buf);
+			int is_valid_input=0;
+			for(int i=0;i<strlen(buf)&&buf[i]!='\n'&&buf[i]!='\0';i++)
+			{
+				struct symbol_set *t=turing_machine->input_symbol_set;
+				is_valid_input=0;
+				while(t)
+				{
+					if(t->element[0]==buf[i])
+					{
+						is_valid_input=1;
+						break;
+					}
+					t=t->next;
+				}
+				if(is_valid_input==0)
+				{
+					break;
+				}
+			}
+			if(is_valid_input==1)
+			{
+				fprintf(console_fp,"==================== RUN ====================\n");
+				process(buf);
+			}
+			else
+			{
+				fprintf(result_fp,"Error\n");
+				fprintf(console_fp,"==================== ERR ====================\nThe input %s is illegal\n==================== END ====================\n",buf);
+			}
 		}
 	}
 	else
@@ -99,7 +137,10 @@ void process(char *buf)
 			fprintf(console_fp,"Index%d\t:\t",i);
 			while(t->right)
 			{
+				if(t->right->index>=0)
 				fprintf(console_fp,"%d",t->right->index);
+				else
+				fprintf(console_fp,"%d",-(t->right->index));
 				if(!t->right->right)
 				{
 					fprintf(console_fp,"\n");
@@ -154,6 +195,7 @@ void process(char *buf)
 		}
 		if(is_break)
 		{
+			fprintf(result_fp,"True\n");
 			fprintf(console_fp,"Result: True\n==================== END ====================\n");
 			break;
 		}
@@ -162,8 +204,10 @@ void process(char *buf)
 		if(!tf)
 		{
 			fprintf(console_fp,"Result: False\n==================== END ====================\n");
+			fprintf(result_fp,"False\n");
 			break;
 		}
+		
 
 		//update
 		state=tf->next_state;
@@ -444,15 +488,15 @@ int mystrcmp(char *str1,char *str2)
 
 int mycount(char *str1,char *str2)
 {
-	int i=0;
+	int t=0;
 	for(int i=0;i<turing_machine->tape_number;i++)
 	{
-		if(str1[i]!='*'&&str2[i]!='*')
+		if(str1[i]=='*'||str2[i]=='*')
 		{
-			++i;
+			++t;
 		}
 	}
-	return i;
+	return t;
 }
 
 struct transform_function *search_transform_function(char *current_state,char *current_symbol)
@@ -466,6 +510,7 @@ struct transform_function *search_transform_function(char *current_state,char *c
 		{
 			if(mycount(current_symbol,t->current_symbol)<=matchstar)
 			{
+				// printf("%d %s %s\n",mycount(current_symbol,t->current_symbol),t->current_state,t->current_symbol);
 				p=t;
 				matchstar=mycount(current_symbol,t->current_symbol);
 			}
