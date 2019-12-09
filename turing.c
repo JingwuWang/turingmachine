@@ -34,7 +34,6 @@ int main(int argc,char **args)
 			//parse
 			parse(buf);
     	}
-		
 		char *input=(char *)malloc(sizeof(char)*100);
 		strcat(input,args[1]);
 		strcat(input,"/input.txt");
@@ -420,7 +419,7 @@ void parse(char *buf)
 			turing_machine->tape_number=atoi(init_s);
 		}
 	}
-	else if(buf[0]!=';'&&buf[0]!='\n')
+	else if(buf[0]!=';'&&buf[0]!='\n'&&buf[0]!='\0')
 	{
 		int l=0,r,len;
 		for(r=l;buf[r]!=' ';r++);
